@@ -1,0 +1,25 @@
+galaxy_info:
+  author: Paul Sweeney
+  description: Various common tasks, handlers, etc
+  company: Kolossi
+
+  license: GPL-3.0-only
+
+  min_ansible_version: 2.9
+
+  platforms:
+  - name: Raspbian Buster
+    versions:
+    - 2019-06-26
+  - name: Ubuntu
+    versions:
+    - 20.04.1 LTS
+
+  galaxy_tags:
+    - raspberry
+    - pi
+    - k8s
+    - kubernetes
+
+dependencies: []
+  
