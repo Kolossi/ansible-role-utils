@@ -1,0 +1,19 @@
+---
+
+- name: "Copy leds utility script"
+  become: yes
+  copy:
+    src: "files/pi-leds"
+    dest: "/etc/init.d/pi-leds"
+    mode: "755"
+  tags: trafficlight_leds
+
+- name: "run update-rc.d"
+  become: yes
+  shell:
+    chdir: "/etc/init.d"
+    cmd: "update-rc.d pi-leds defaults; ./pi-leds start"
+    creates: "/etc/rc5.d/S01pi-leds"
+    warn: no
+  tags: trafficlight_leds
+

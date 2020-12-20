@@ -1,0 +1,9 @@
+---
+
+- name: "Set iscsi initiator name"
+  become: yes
+  lineinfile:
+    path: "/etc/iscsi/initiatorname.iscsi"
+    regexp: '^(InitiatorName|GenerateName)=.*'
+    line: 'InitiatorName={{ iscsi_initiatorname | replace("{{ inventory_hostname }}",inventory_hostname) }}'
+  when: iscsi_initiatorname is defined
