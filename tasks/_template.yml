@@ -1,0 +1,44 @@
+---
+
+- import_tasks:
+    file: task_header.yml
+  vars:
+    kol_utils_name: "CHANGE ME"
+    kol_utils_params:
+      ## e.g.:
+      # target_device:     "{{ target_device | mandatory }}"  # mandatory
+      # my_comment:        "{{ my_comment | default(None) }}" # optional
+      #
+      # iscsi_target_iqn:  "{{ iscsi_target_iqn | mandatory | replace('{{ inventory_hostname }}',inventory_hostname) }}"
+      # iscsi_target_ip:   "{{ iscsi_target_ip | mandatory }}"
+      # iscsi_target_port: "{{ iscsi_target_port | default(3260) | int }}" 
+
+########################################
+
+## If a value depends on a passed value edited in this util's _params list,
+## they will need to be assigned in a task like this following the header.
+## The same goes for any local-only vars:
+##
+# - name: "Process local vars"
+#   set_fact:
+# e.g. of a local-only var (start with '_'):
+#      _iscsi_service_name: "{{ 'open-iscsi.service' if (ansible_distribution=='Ubuntu') else 'iscsi.service' }}"
+# e.g. of a var that will be "returned" (do not start with '_'):
+#     iscsi_target_config: "/etc/iscsi/nodes/{{ iscsi_target_iqn }}/{{ iscsi_target_ip }},{{ iscsi_target_port }},1/default"
+
+###################################
+#
+#   tasks
+#
+###################################
+
+########################################
+
+- import_tasks:
+    file: task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        ## list any "returned" vars as e.g.:
+        # "iscsi_target_config:    {{ iscsi_target_config }}",
+      ]

@@ -1,0 +1,14 @@
+---
+
+- name: "{{ '|-'*(_kol_utils_callstack | length) }}> ({{ _kol_utils_callstack[-1]['name'] }})->({{ kol_utils_name|default('UNKNOWN') }})"
+  set_fact:
+    _kol_utils_callstack: "{{ _kol_utils_callstack + [ { 'name':   kol_utils_name | mandatory, 'params': kol_utils_params | mandatory } ] }}"
+    _params:              "{{ kol_utils_params | mandatory }}"
+    
+- name: "kol_utils_show_entry_vars == True"
+  debug:
+    msg:
+      [
+        "{{ kol_utils_params }}",
+      ]
+  when: kol_utils_show_entry_vars | default(False)

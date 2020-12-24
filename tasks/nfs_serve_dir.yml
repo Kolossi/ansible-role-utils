@@ -1,0 +1,45 @@
+---
+
+- import_tasks:
+    file: task_header.yml
+  vars:
+    kol_utils_name: "nfs serve dir"
+    kol_utils_params:
+      nfs_serve_network: "{{ nfs_serve_network | mandatory }}"
+      nfs_serve_path:    "{{ nfs_serve_path | mandatory }}"
+      nfs_serve_mode:    "{{ nfs_serve_mode | default('rw') }}"
+
+########################################
+
+- name: "install nfs server tools (include)"
+  include_tasks:
+    file: nfs_install_server_tools.yml
+
+- name: "create path dir"
+  become: yes
+  file:
+    path: "{{ _params['nfs_serve_path'] }}"
+    state: directory
+    mode: 0777
+
+- name: "configure serve"
+  become: yes
+  register: nfs_serve_configure_result
+  lineinfile:
+    path: "/etc/exports"
+    line: "{{ _params['nfs_serve_path'] }} {{ _params['nfs_serve_network'] }}({{ _params['nfs_serve_mode'] }})"
+
+- name: "restart nfs server (include)"
+  include_tasks:
+    file: nfs_server_restart.yml
+  when: nfs_serve_configure_result.changed
+    
+########################################
+
+- import_tasks:
+    file: task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        "nfs_serve_configure_result: {{ nfs_serve_configure_result }}"
+      ]

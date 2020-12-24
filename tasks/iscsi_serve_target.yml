@@ -1,0 +1,68 @@
+---
+
+- import_tasks:
+    file: task_header.yml
+  vars:
+    kol_utils_name: "iscsi serve target"
+    kol_utils_params:
+      iscsi_target_blocks_file: "{{ iscsi_target_blocks_file | mandatory | replace('{{ inventory_hostname }}',inventory_hostname) }}"
+      iscsi_target_size_mb:     "{{ iscsi_target_size_mb | mandatory | int }}"
+      iscsi_target_iqn:         "{{ iscsi_target_iqn | mandatory | replace('{{ inventory_hostname }}',inventory_hostname) }}"
+      iscsi_target_username:    "{{ iscsi_target_username | default('') | replace('{{ inventory_hostname }}',inventory_hostname) | regex_replace('[^a-zA-Z0-9]','') }}"
+      iscsi_target_password:    "{{ iscsi_target_password | default('') }}"
+      iscsi_initiatorname:      "{{ iscsi_initiatorname }}"
+
+########################################
+
+- name: "process vars"
+  set_fact:
+    iscsi_target_config: "/etc/tgt/conf.d/{{ _params['iscsi_target_iqn'] | replace(':', '.') }}.conf"
+
+- name: "install iscsi server tools (include)"
+  include_tasks: 
+    file: iscsi_install_server_tools.yml
+  vars:
+    iscsi_initiatorname: "{{ _params['iscsi_initiatorname'] }}"
+
+- name: "make blocks dir"
+  become: yes
+  file:
+    path: "{{ _params['iscsi_target_blocks_file'] | dirname }}"
+    state: directory
+
+- name: "make blocks file"
+  become: yes
+  register: iscsi_blockfile_create_result
+  file:
+    path: "{{ _params['iscsi_target_blocks_file'] }}"
+    state: touch
+    modification_time: preserve
+    access_time: preserve
+  notify: Restart iscsi server
+ 
+- name: "fill node workdir blocks file"
+  become: yes
+  command:
+    cmd: "dd if=/dev/zero of={{ iscsi_blockfile_create_result.dest }} bs=1M count={{ _params['iscsi_target_size_mb'] }} status=none"
+  when: iscsi_blockfile_create_result.changed
+
+- name: "create iscsi target config"
+  become: yes
+  template:
+    src: "iscsi_serve_target.conf.j2"
+    dest: "{{ iscsi_target_config }}"
+  notify: Restart iscsi server
+
+- name: "restart iscsi server if required"
+  meta: flush_handlers
+
+########################################
+
+- import_tasks:
+    file: task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        "iscsi_blockfile_create_result: {{ iscsi_blockfile_create_result }}",
+        "iscsi_target_config:           {{ iscsi_target_config }}",
+      ]

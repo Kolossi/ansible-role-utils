@@ -1,0 +1,11 @@
+---
+
+- name: "kol_utils_show_exit_vars == True"
+  debug:
+    msg: "{{ kol_utils_exit_vars|default('') }}"
+  when: kol_utils_show_exit_vars | default(False)
+
+- name: "<{{ '-|'*(_kol_utils_callstack | length - 1) }} ({{ _kol_utils_callstack[-2]['name'] }})<-({{ _kol_utils_callstack[-1]['name'] }})"
+  set_fact:
+    _params:              "{{ _kol_utils_callstack[-2]['params'] }}"
+    _kol_utils_callstack: "{{ _kol_utils_callstack[:-1] }}"

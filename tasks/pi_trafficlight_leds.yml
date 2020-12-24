@@ -1,5 +1,13 @@
 ---
 
+- import_tasks:
+    file: task_header.yml
+  vars:
+    kol_utils_name: "pi trafficlight leds"
+    kol_utils_params: {}
+
+########################################
+
 - name: "Copy leds utility script"
   become: yes
   copy:
@@ -10,6 +18,7 @@
 
 - name: "run update-rc.d"
   become: yes
+  register: update_result
   shell:
     chdir: "/etc/init.d"
     cmd: "update-rc.d pi-leds defaults; ./pi-leds start"
@@ -17,3 +26,12 @@
     warn: no
   tags: trafficlight_leds
 
+########################################
+
+- import_tasks:
+    file: task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        "update_result: {{ update_result }}"
+      ]

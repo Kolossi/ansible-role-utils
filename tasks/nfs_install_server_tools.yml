@@ -3,13 +3,12 @@
 - import_tasks:
     file: task_header.yml
   vars:
-    kol_utils_name: "iscsi install server tools"
-    kol_utils_params:
-      iscsi_initiatorname: "{{ iscsi_initiatorname | default('dontset') }}" 
+    kol_utils_name: "nfs install server tools"
+    kol_utils_params: {}
 
 ########################################
 
-- name: "install tgt (iscsi server tools)"
+- name: "install nfs server tools"
   become: yes
   register: apt_result
   retries: 3
@@ -17,15 +16,10 @@
   until: apt_result is not failed
   apt:
     force_apt_get: yes # there's no need to use aptitude
-    name: "tgt"
+    name: "nfs-kernel-server"
     state: present
     update_cache: yes
     cache_valid_time: 3600 # Only run "update_cache=yes" if the last one is more than 3600 seconds ago
-
-- include_tasks: iscsi_set_initiatorname.yml
-  vars:
-    iscsi_initiatorname: "{{ _params['iscsi_initiatorname'] }}"
-  when: _params['iscsi_initiatorname'] != 'dontset'
 
 ########################################
 

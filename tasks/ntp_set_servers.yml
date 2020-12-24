@@ -1,0 +1,36 @@
+---
+
+- import_tasks:
+    file: task_header.yml
+  vars:
+    kol_utils_name: "ntp set servers"
+    kol_utils_params:
+      ntp_servers: "{{ ntp_servers | mandatory }}"
+
+########################################
+
+- name: "set ntp server"
+  become: yes
+  notify: Restart ntp
+  register: ntp_config_result
+  lineinfile:
+    path: "/etc/systemd/timesyncd.conf"
+    line: "NTP={{ _params['ntp_servers'] }}"
+    regexp: "^\\s*#?\\s*(NTP=).*$"
+    insertafter: "\\[Time\\]"
+    state: present
+  when: ntp_servers is defined
+
+- name: "restart ntp if required"
+  meta: flush_handlers
+
+########################################
+
+- import_tasks:
+    file: task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        "ntp_config_result: {{ ntp_config_result }}"
+      ]
+

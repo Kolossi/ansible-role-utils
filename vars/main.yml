@@ -1,2 +1,5 @@
 ---
-# vars file for utils
+
+_kol_utils_callstack:
+  - name: ""
+    params: {}

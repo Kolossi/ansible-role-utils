@@ -1,4 +1,11 @@
 ---
+- import_tasks:
+    file: task_header.yml
+  vars:
+    kol_utils_name: "nfs server restart"
+    kol_utils_params: {}
+
+########################################
 
 - name: Reload exports
   become: yes
@@ -7,7 +14,18 @@
 - name: Restart nfs server
   run_once: yes
   become: yes
+  register: restart_result
   systemd:
     state: restarted
     name: nfs-kernel-server
     daemon_reload: yes
+
+########################################
+
+- import_tasks:
+    file: task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        "restart_result: {{ restart_result }}"
+      ]

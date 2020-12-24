@@ -1,0 +1,31 @@
+---
+
+- import_tasks:
+    file: task_header.yml
+  vars:
+    kol_utils_name: "filesystem find uuid"
+    kol_utils_params:
+      target_device: "{{ target_device }}"
+
+########################################
+
+- name: "find device filesystem uuid"
+  become: yes
+  command: "lsblk --noheadings --output uuid {{ _params['target_device'] }}"
+  register: device_uuid_result
+  changed_when: false
+
+- name: "set device filesystem uuid"
+  set_fact:
+    device_uuid: "{{ device_uuid_result.stdout }}"
+
+########################################
+
+- import_tasks:
+    file: task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        "device_uuid_result: {{ device_uuid_result }}",
+        "device_uuid:        {{ device_uuid }}"
+      ]

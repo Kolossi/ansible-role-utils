@@ -1,2 +1,45 @@
 ---
+
 # there are no tasks here, the role is for tasks to be included as needed
+# use in a caller playbook/role/task with e.g.:
+# - include_role:
+#     name: "utils"
+#     tasks_from: iscsi_set_initiator.yml
+# +++ FOLLOWING IS OPTIONAL
+#     apply:
+#       tags:
+#         - YOUR_TAG
+#   vars:
+#     iscsi_initiatorname: "{{ YOUR_VALUE }}"
+#   when: YOUR_CONDITION
+
+
+
+#    - include_role:
+#        name: "utils"
+#        tasks_from: ntp_set_servers.yml
+#      vars:
+#        ntp_servers: "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: iscsi_install_server_tools.yml
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: nfs_install_server_tools.yml
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: iscsi_serve_target.yml
+#      vars:
+#        iscsi_target_blocks_file: "{{ YOUR_VALUE }}"
+#        iscsi_target_size_mb:     "{{ YOUR_VALUE }}"
+#        iscsi_target_iqn:         "{{ YOUR_VALUE }}"
+#        iscsi_target_username:    "{{ YOUR_VALUE }}"
+#        iscsi_target_password:    "{{ YOUR_VALUE }}"
+#        iscsi_initiatorname:      "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION

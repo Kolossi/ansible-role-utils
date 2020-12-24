@@ -1,2 +1,14 @@
 ---
-# handlers file for utils
+- name: Restart ntp
+  become: yes
+  systemd:
+    state: restarted
+    name: systemd-timesyncd
+    daemon_reload: yes
+
+- name: Restart iscsi server
+  become: yes
+  systemd:
+    state: restarted
+    name: tgt
+    daemon_reload: yes

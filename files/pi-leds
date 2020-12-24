@@ -1,0 +1,40 @@
+#! /bin/bash
+
+### BEGIN INIT INFO
+# Provides:          pi-leds
+# Required-Start:    uuidd
+# Required-Stop:     uuidd 
+# Default-Start:     1 2 3 4 5
+# Default-Stop:      0 6
+# Short-Description: Change raspberry pi leds
+# Description:       Use green on/red off for running and
+#                    green off/red flashing for shutting down
+### END INIT INFO
+
+set -e
+
+name=`basename $0`
+
+case "$1" in
+    start|restart)
+    led0command='default-on'
+    led1command='none'
+    echo ${led0command} >> /sys/class/leds/led0/trigger
+    echo ${led1command} >> /sys/class/leds/led1/trigger
+    ;;
+    stop)
+    led0command='none'
+    led1command='heartbeat'
+    echo ${led0command} >> /sys/class/leds/led0/trigger
+    echo ${led1command} >> /sys/class/leds/led1/trigger
+    ;;
+    status)
+    # do nothing
+    ;;
+    *)
+    echo "Usage: $0 {start|stop|restart|status}"
+    exit 1
+    ;;
+esac
+
+exit 0

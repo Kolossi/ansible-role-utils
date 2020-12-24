@@ -1,0 +1,7 @@
+<target {{ _params['iscsi_target_iqn'] }}>
+  backing-store {{ _params['iscsi_target_blocks_file'] }}
+  initiator-name {{ _params['iscsi_initiatorname'] }}
+{% if (_params['iscsi_target_username'] | default('')) != '' %}
+  incominguser {{ _params['iscsi_target_username'] }} {{ _params['iscsi_target_password'] }}
+{% endif %}
+</target>

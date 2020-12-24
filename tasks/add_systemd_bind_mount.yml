@@ -1,26 +1,43 @@
 ---
 
-- name: "process vars"
-  set_fact:
-    #params
-    bindmount_src: '{{ bindmount_src }}'
-    bindmount_dest: '{{ bindmount_dest }}'
+- import_tasks:
+    file: task_header.yml
+  vars:
+    kol_utils_name: "iscsi mount target"
+    kol_utils_params:
+      bindmount_src:  "{{ bindmount_src | mandatory }}"
+      bindmount_dest: "{{ bindmount_dest | mandatory }}"
 
-    # local vars
-    bindmount_name: '{{ bindmount_dest | regex_replace("^\/","") | regex_replace("\/","-") }}'
+########################################
+
+- name: "process local vars"
+  set_facts:
+    bindmount_name:   "{{ _params['bindmount_dest'] | regex_replace('^/','') | regex_replace('/','-') }}"
 
 - name: "create systemd bindmount unit"
   become: yes
-  register: bindmount_create
+  register: bindmount_create_result
   template:
     src: "systemd_iscsi_bindmount.mount.j2"
-    dest: '/etc/systemd/system/{{ bindmount_name }}.mount'
+    dest: "/etc/systemd/system/{{ bindmount_name }}.mount"
 
 - name: "start bindmount unit"
   become: yes
-  register: bindmount_start
+  register: bindmount_start_result
   systemd:
     daemon_reload: yes
-    name: '{{ bindmount_name }}.mount'
+    name: "{{ bindmount_name }}.mount"
     enabled: yes
     state: started
+
+########################################
+
+- import_tasks:
+    file: task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        bindmount_create_result: "{{ bindmount_create_result }}",
+        bindmount_start_result:  "{{ bindmount_start_result }}",
+        bindmount_name:          "{{ bindmount_name }}"
+      ]
