@@ -33,28 +33,26 @@
 - name: "make blocks file"
   become: yes
   register: iscsi_blockfile_create_result
+  notify: "Reboot"
   file:
     path: "{{ _params['iscsi_target_blocks_file'] }}"
     state: touch
     modification_time: preserve
     access_time: preserve
-  notify: Restart iscsi server
  
 - name: "fill node workdir blocks file"
   become: yes
+  notify: "Reboot"
   command:
     cmd: "dd if=/dev/zero of={{ iscsi_blockfile_create_result.dest }} bs=1M count={{ _params['iscsi_target_size_mb'] }} status=none"
   when: iscsi_blockfile_create_result.changed
 
 - name: "create iscsi target config"
   become: yes
+  notify: "Reboot"
   template:
     src: "iscsi_serve_target.conf.j2"
     dest: "{{ iscsi_target_config }}"
-  notify: Restart iscsi server
-
-- name: "restart iscsi server if required"
-  meta: flush_handlers
 
 ########################################
 

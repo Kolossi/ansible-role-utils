@@ -13,15 +13,16 @@
   set_fact:
     _iscsi_service_name: "{{ 'open-iscsi.service' if (ansible_distribution=='Ubuntu') else 'iscsi.service' }}"
 
-- name: "install open-iscsi"
+- name: "install open-iscsi and lsscsi"
   become: yes
   register: apt_result
+  notify: "Reboot"
   retries: 3
   delay: 5
   until: apt_result is not failed
   apt:
     force_apt_get: yes # there's no need to use aptitude
-    name: "open-iscsi"
+    name: ["open-iscsi","lsscsi"]
     state: present
     install_recommends: no
     update_cache: yes
@@ -30,6 +31,7 @@
 - name: "disable ib_iser" # <- was causing error during boot on pi4b
   become: yes
   register: iscsi_iser_result
+  notify: "Reboot"
   lineinfile:
     path: "/lib/modules-load.d/open-iscsi.conf"
     regexp: '^(ib_iser)$'
@@ -44,6 +46,7 @@
 
 - name: "enable iscsi service"
   become: yes
+  notify: "Reboot"
   register: iscsi_service_enabled_result
   systemd:
     name: "{{ _iscsi_service_name }}"
@@ -51,6 +54,7 @@
 
 - name: "start iscsi service"
   become: yes
+  notify: "Reboot"
   register: iscsi_service_start_result
   systemd:
     name: "{{ _iscsi_service_name }}"

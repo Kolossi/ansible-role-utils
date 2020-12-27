@@ -21,9 +21,6 @@
     state: present
   when: ntp_servers is defined
 
-- name: "restart ntp if required"
-  meta: flush_handlers
-
 ########################################
 
 - import_tasks:

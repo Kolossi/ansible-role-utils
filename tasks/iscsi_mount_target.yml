@@ -38,6 +38,7 @@
   - name: "run iscsi discovery"
     register: iscsi_discovery_result
     become: yes
+    notify: "Reboot"
     open_iscsi:
       discover:  yes
       portal:    "{{ _params['iscsi_target_ip'] }}"
@@ -47,6 +48,7 @@
 
   - name: "update iscsi target startup"
     become: yes
+    notify: "Reboot"
     lineinfile:
       path: "{{ iscsi_target_config }}"
       regexp: "^(node.startup[ ]*=[ ]*).*"
@@ -56,6 +58,7 @@
 
   - name: "update iscsi target connection startup"
     become: yes
+    notify: "Reboot"
     lineinfile:
       path: "{{ iscsi_target_config }}"
       regexp: "^(node.conn\\[0\\].startup[ ]*=[ ]*).*"
@@ -65,6 +68,7 @@
 
   - name: "set iscsi target CHAP authmethod"
     become: yes
+    notify: "Reboot"
     lineinfile:
       path: "{{ iscsi_target_config }}"
       regexp: "^(node.session.auth.authmethod[ ]*=[ ]*).*"
@@ -75,6 +79,7 @@
   - block:
     - name: "insert iscsi target CHAP password if missing"
       become: yes
+      notify: "Reboot"
       lineinfile:
         path: "{{ iscsi_target_config }}"
         regexp: "^(node.session.auth.password[ ]*=[ ]*).*"
@@ -83,6 +88,7 @@
 
     - name: "update iscsi target CHAP password"
       become: yes
+      notify: "Reboot"
       lineinfile:
         path: "{{ iscsi_target_config }}"
         regexp: "^(node.session.auth.password[ ]*=[ ]*).*"
@@ -93,6 +99,7 @@
   - block:
     - name: "insert iscsi target CHAP username if missing"
       become: yes
+      notify: "Reboot"
       lineinfile:
         path: "{{ iscsi_target_config }}"
         regexp: "^(node.session.auth.username[ ]*=[ ]*).*"
@@ -101,6 +108,7 @@
 
     - name: "update iscsi target CHAP user"
       become: yes
+      notify: "Reboot"
       lineinfile:
         path: "{{ iscsi_target_config }}"
         regexp: "^(node.session.auth.username[ ]*=[ ]*).*"
@@ -111,6 +119,7 @@
   - name: "connect iscsi lun"
     register: iscsi_mount_result
     become: yes
+    notify: "Reboot"
     open_iscsi:
       auto_node_startup: "{{ 'yes' if (_params['iscsi_target_startup'] == 'automatic') else 'no' if (_params['iscsi_target_startup'] == 'manual') else omit }}"
       login: yes
@@ -132,7 +141,7 @@
   vars:
     target_device: "{{ iscsi_device }}"
 
-- name: "set iscsi lun uuid"
+- name: "set iscsi lun filesystem uuid"
   set_fact:
     iscsi_uuid: "{{ device_uuid }}"
 
