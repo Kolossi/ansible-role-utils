@@ -1,14 +1,18 @@
 ---
-- name: Restart ntp
+- name: "Restart ntp"
   become: yes
   systemd:
     state: restarted
     name: systemd-timesyncd
     daemon_reload: yes
 
-- name: Restart iscsi server
+- name: "Restart iscsi server"
   become: yes
   systemd:
     state: restarted
     name: tgt
     daemon_reload: yes
+
+- name: "Reboot"
+  become: yes
+  reboot:

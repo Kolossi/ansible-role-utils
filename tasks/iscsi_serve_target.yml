@@ -1,16 +1,17 @@
 ---
 
-- import_tasks:
+- include_tasks:
     file: task_header.yml
   vars:
     kol_utils_name: "iscsi serve target"
     kol_utils_params:
-      iscsi_target_blocks_file: "{{ iscsi_target_blocks_file | mandatory | replace('{{ inventory_hostname }}',inventory_hostname) }}"
-      iscsi_target_size_mb:     "{{ iscsi_target_size_mb | mandatory | int }}"
-      iscsi_target_iqn:         "{{ iscsi_target_iqn | mandatory | replace('{{ inventory_hostname }}',inventory_hostname) }}"
-      iscsi_target_username:    "{{ iscsi_target_username | default('') | replace('{{ inventory_hostname }}',inventory_hostname) | regex_replace('[^a-zA-Z0-9]','') }}"
-      iscsi_target_password:    "{{ iscsi_target_password | default('') }}"
-      iscsi_initiatorname:      "{{ iscsi_initiatorname }}"
+      iscsi_target_blocks_file:    "{{ iscsi_target_blocks_file | mandatory | replace('{{ inventory_hostname }}',inventory_hostname) }}"
+      iscsi_target_size_mb:        "{{ iscsi_target_size_mb | mandatory | int }}"
+      iscsi_target_iqn:            "{{ iscsi_target_iqn | mandatory | replace('{{ inventory_hostname }}',inventory_hostname) }}"
+      iscsi_target_username:       "{{ iscsi_target_username | default('') | replace('{{ inventory_hostname }}',inventory_hostname) | regex_replace('[^a-zA-Z0-9]','') }}"
+      iscsi_target_password:       "{{ iscsi_target_password | default('') }}"
+      iscsi_server_initiatorname:  "{{ iscsi_server_initiatorname | default(omit) }}"
+      iscsi_allowed_initiatorname: "{{ [iscsi_allowed_initiatorname] if iscsi_allowed_initiatorname | mandatory is string else iscsi_allowed_initiatorname }}"
 
 ########################################
 
@@ -22,7 +23,7 @@
   include_tasks: 
     file: iscsi_install_server_tools.yml
   vars:
-    iscsi_initiatorname: "{{ _params['iscsi_initiatorname'] }}"
+    iscsi_initiatorname: "{{ _params['iscsi_server_initiatorname'] | default(omit)}}"
 
 - name: "make blocks dir"
   become: yes
@@ -56,7 +57,7 @@
 
 ########################################
 
-- import_tasks:
+- include_tasks:
     file: task_footer.yml
   vars:
     kol_utils_exit_vars:

@@ -1,11 +1,11 @@
 ---
 
-- import_tasks:
+- include_tasks:
     file: task_header.yml
   vars:
     kol_utils_name: "iscsi install server tools"
     kol_utils_params:
-      iscsi_initiatorname: "{{ iscsi_initiatorname | default('dontset') }}" 
+      iscsi_initiatorname: "{{ iscsi_initiatorname | default('dontset') }}"
 
 ########################################
 
@@ -30,7 +30,7 @@
 
 ########################################
 
-- import_tasks:
+- include_tasks:
     file: task_footer.yml
   vars:
     kol_utils_exit_vars:

@@ -1,0 +1,105 @@
+---
+
+- include_tasks:
+    file: task_header.yml
+  vars:
+    kol_utils_name: "test dir throughput"
+    kol_utils_params:
+      path:              "{{ path | mandatory }}"
+      num_passes:        "{{ num_passes | mandatory | int }}"
+      local_scores_file: "{{ local_scores_file | mandatory }}"
+
+########################################
+
+###################################
+#
+#   tasks
+#
+###################################
+
+#- name: "setup vars"
+#  set_fact:
+#    dd_write_scores: []
+#    scores:          []
+#    all_scores:      "{{ all_scores | combine({ {{ path }}:{scores:[],dd_write_scores:[]}}) }}"
+
+- name: "get test script"
+  become: yes
+  get_url:
+    url: "https://raw.githubusercontent.com/TheRemote/PiBenchmarks/9d318bad4e05abcd886a5d9aa86ecee6bfdd2728/Storage.sh"
+    dest: "~/Storage.sh"
+    mode: "u+x"
+    checksum: sha256:b0f1d50c6360fdb4a323bfdf6c689232b63e694e89407902098a08f82c08a55f
+
+# change "printf" after "Print_Style() {" to #
+# change "^curl --form" to #
+# change all printf/echo after "# Display results" to #
+# add this before "# Display results" : echo $1 $DDWriteResult $Score
+
+- name: "Copy script"
+  become: yes
+  copy:
+    src:        "~/Storage.sh"
+    dest:       "~/KolStorage.sh"
+    mode:       "preserve"
+    remote_src: yes
+    force:      no
+
+- name: "patch script"
+  become: yes
+  block:
+  - lineinfile:
+      path: "~/KolStorage.sh"
+      regexp: '^(  printf "%s\\\\n" "\$\{2\}\$1\$\{NORMAL\}")'
+      backrefs: yes
+      line: '\1 > \/dev\/null'
+
+  - lineinfile:
+      path: "~/KolStorage.sh"
+      regexp: '^(curl --form.*)'
+      backrefs: yes
+      line: '#\1'
+
+  - replace:
+      path: "~/KolStorage.sh"
+      after: '# Display results'
+      regexp: '^( *(printf|echo).*)'
+      replace: '#\1'
+
+  - replace:
+      path: "~/KolStorage.sh"
+      regexp: '^(read.*)'
+      replace: '#\1'
+
+  - lineinfile:
+      path: "~/KolStorage.sh"
+      insertbefore: '# Display results'
+      line: 'echo $1 ${DDWriteResult:-0} ${Score:-0} 1>&2'
+
+- name: "run test script"
+  become: yes
+  register: script_result
+  shell:
+    cmd: "(for num in {1..{{ _params['num_passes'] }}}; do ~/KolStorage.sh '{{ _params['path'] }}'; done) 2>&1 1> /dev/null | grep -E '^{{ _params['path'] }} [0-9.]+ [0-9.]+$'"
+  args:
+    executable: bash
+
+- name: "store results"
+  lineinfile:
+    path: "{{ _params['local_scores_file'] }}"
+    regexp: "ALWAYS ADD"
+    line: "{{ kol_score_line }}"
+  loop: "{{ script_result.stdout_lines | list }}"
+  loop_control:
+    loop_var: kol_score_line
+  delegate_to: 127.0.0.1
+
+########################################
+
+- include_tasks:
+    file: task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        "results added to: {{ _params['local_scores_file'] }}"
+      ]

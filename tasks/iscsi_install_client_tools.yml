@@ -1,11 +1,12 @@
 ---
 
-- import_tasks:
+- include_tasks:
     file: task_header.yml
   vars:
     kol_utils_name: "iscsi install client tools"
     kol_utils_params:
       iscsi_initiatorname: "{{ iscsi_initiatorname | default('dontset') }}"
+      disable_iser:        "{{ disable_iser | default(False) }}"
 
 ########################################
 
@@ -28,7 +29,7 @@
     update_cache: yes
     cache_valid_time: 3600 # Only run "update_cache=yes" if the last one is more than 3600 seconds ago
 
-- name: "disable ib_iser" # <- was causing error during boot on pi4b
+- name: "disable ib_iser" # <- causes (mostly harmless) error during raspbain boot on pi4b
   become: yes
   register: iscsi_iser_result
   notify: "Reboot"
@@ -37,7 +38,7 @@
     regexp: '^(ib_iser)$'
     line: '#\1'
     backrefs: yes
-  when: ansible_lsb.id=='Raspbian'
+  when: _params['disable_iser']
 
 - include_tasks: iscsi_set_initiatorname.yml
   vars:
@@ -62,7 +63,7 @@
 
 ########################################
 
-- import_tasks:
+- include_tasks:
     file: task_footer.yml
   vars:
     kol_utils_exit_vars:

@@ -1,6 +1,6 @@
 ---
 
-- import_tasks:
+- include_tasks:
     file: task_header.yml
   vars:
     kol_utils_name: "pi trafficlight leds"
@@ -28,7 +28,7 @@
 
 ########################################
 
-- import_tasks:
+- include_tasks:
     file: task_footer.yml
   vars:
     kol_utils_exit_vars:

@@ -1,6 +1,6 @@
 ---
 
-- import_tasks:
+- include_tasks:
     file: task_header.yml
   vars:
     kol_utils_name: "iscsi mount target"
@@ -12,6 +12,7 @@
       iscsi_target_port:     "{{ iscsi_target_port | default(3260) | int }}"
       iscsi_target_startup:  "{{ iscsi_target_startup | default('dontchange') }}"
       iscsi_initiatorname:   "{{ iscsi_initiatorname | default(None) }}"
+      create_ext4_fs:        "{{ create_ext4_fs | default(False) }}"
     
 ########################################
 
@@ -22,7 +23,7 @@
 - name: "find existing iscsi device"
   register: _lsscsi_result
   shell:
-    cmd: "lsscsi -t | grep '{{ _params['iscsi_target_iqn'] }},' | awk '{ print $4; }'"
+    cmd: "lsscsi -t | grep disk | grep '{{ _params['iscsi_target_iqn'] }},' | awk '{ print $4; }'"
   changed_when: False
 
 - name: "store existing iscsi device"
@@ -135,7 +136,15 @@
 
   when: iscsi_device | default('') == ''
 
-- name: "find iscsi root file system uuid (include)"
+- include_role:
+    name: "utils"
+    tasks_from: ext4_make_filesystem.yml
+  vars:
+    filesystem_device:     "{{ iscsi_device }}"
+    filesystem_force_make: No
+    create_ext4_fs:        "{{ _params['create_ext4_fs'] }}"
+
+- name: "find iscsi lun file system uuid (include)"
   include_tasks:
     file: filesystem_find_uuid.yml
   vars:
@@ -147,7 +156,7 @@
 
 ########################################
 
-- import_tasks:
+- include_tasks:
     file: task_footer.yml
   vars:
     kol_utils_exit_vars:

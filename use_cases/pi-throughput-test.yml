@@ -1,0 +1,211 @@
+- vars:
+    ssd_pi_hostname:      "CHANGE_ME: server pi (with ssd) hostname known to ansible :CHANGE_ME"
+    client_pi_hostname:   "CHANGE_ME: client pi hostname known to ansible hosts file :CHANGE_ME"
+    nas_nfs_target:       "CHANGE_ME: nas nfs target ({ip address}:{path}) :CHANGE_ME"
+    nas_iscsi_target_iqn: "CHANGE_ME: nas iscsi target iqn :CHANGE_ME"
+    nas_iscsi_target_ip:  "CHANGE_ME: nas iscsi target ip address :CHANGE_ME"
+    pi_nfs_serve_network: "CHANGE_ME: an ip network spec that includes server & client pis :CHANGE_ME"
+    test_dir:             "CHANGE_ME: dir on pi to use for workings (e.g. /media/test) :CHANGE_ME"
+    ssd_device:           "CHANGE_ME: pi ssd device (e.g. /dev/sda) :CHANGE_ME"
+    pi_ntp_servers:       "CHANGE_ME: space-separated ntp servers :CHANGE_ME"
+
+  hosts: "{{ ssd_pi_hostname }},{{ client_pi_hostname }}"
+
+  tasks:
+    - include_role:
+        name: "utils"
+        tasks_from: ntp_set_servers.yml
+      vars:
+        ntp_servers: "{{ pi_ntp_servers }}"
+
+    - include_role:
+        name: "utils"
+        tasks_from: ext4_make_filesystem.yml
+      vars:
+        filesystem_device:     "{{ ssd_device }}"
+        filesystem_force_make: No
+      when: inventory_hostname == ssd_pi_hostname
+
+    - name: "mount ssd device"
+      become: yes
+      mount:
+        path: "{{ test_dir }}/ssd"
+        src:  "{{ ssd_device }}"
+        fstype: ext4
+        opts: defaults,noatime
+        state: mounted
+      when: inventory_hostname == ssd_pi_hostname
+
+    - name: "mount tmp (mem) dir"
+      become: yes
+      mount:
+        path: "{{ test_dir }}/tmp"
+        src:  "tmpfs"
+        fstype: tmpfs
+        opts: defaults,noatime,size=500m
+        state: mounted
+      when: inventory_hostname == ssd_pi_hostname
+
+    - include_role:
+        name: "utils"
+        tasks_from: iscsi_mount_target.yml
+      vars:
+        iscsi_target_iqn:     "{{ nas_iscsi_target_iqn }}"
+        iscsi_target_ip:      "{{ nas_iscsi_target_ip }}"
+        iscsi_target_startup: "automatic"
+        iscsi_initiatorname:  "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}"
+      when: inventory_hostname == ssd_pi_hostname
+
+    - name: "mount nas iscsi device"
+      become: yes
+      mount:
+        path: "{{ test_dir }}/nas_iscsi"
+        src:  "{{ iscsi_device }}"
+        fstype: ext4
+        opts: defaults,noatime,_netdev
+        state: mounted
+      when: inventory_hostname == ssd_pi_hostname
+
+    - include_role:
+        name: "utils"
+        tasks_from: nfs_install_client_tools.yml
+      when: inventory_hostname == ssd_pi_hostname
+
+    - name: "mount nas nfs dir"
+      become: yes
+      mount:
+        path: "{{ test_dir }}/nas_nfs"
+        src:  "{{ nas_nfs_target }}"
+        fstype: nfs
+        opts: defaults,noatime,_netdev
+        state: mounted
+      when: inventory_hostname == ssd_pi_hostname
+
+    - include_role:
+        name: "utils"
+        tasks_from: iscsi_serve_target.yml
+        apply:
+          delegate_to: "{{ ssd_pi_hostname }}"
+      vars:
+        iscsi_target_blocks_file:    "{{ test_dir }}/ssd/blocks/blocks-{{ inventory_hostname }}.img"
+        iscsi_target_size_mb:        500
+        iscsi_target_iqn:            "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}.Target-ThroughputTest"
+        iscsi_allowed_initiatorname: "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}"
+
+    - include_role:
+        name: "utils"
+        tasks_from: nfs_serve_dir.yml
+      vars:
+        nfs_serve_network: "{{ pi_nfs_serve_network }}"
+        nfs_serve_path:    "{{ test_dir }}/ssd"
+      when: inventory_hostname == ssd_pi_hostname
+
+    - name: "flush handlers"
+      meta: flush_handlers
+
+    - include_role:
+        name: "utils"
+        tasks_from: iscsi_mount_target.yml
+      vars:
+        iscsi_target_iqn:      "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}.Target-ThroughputTest"
+        iscsi_target_ip:       "{{ hostvars[ssd_pi_hostname]['ansible_default_ipv4']['address'] }}"
+        iscsi_target_startup:  "automatic"
+        iscsi_initiatorname:      "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}"
+#      when: inventory_hostname == client_pi_hostname
+
+    - name: "mount self iscsi device"
+      become: yes
+      mount:
+        path: "{{ test_dir }}/self_iscsi"
+        src:  "{{ iscsi_device }}"
+        fstype: ext4
+        opts: defaults,noatime,_netdev
+        state: mounted
+      when: inventory_hostname == ssd_pi_hostname
+
+    - name: "mount pi network iscsi device"
+      become: yes
+      mount:
+        path: "{{ test_dir }}/pi_iscsi"
+        src:  "{{ iscsi_device }}"
+        fstype: ext4
+        opts: rw,defaults,noatime,_netdev
+        state: mounted
+      when: inventory_hostname == client_pi_hostname
+
+    - include_role:
+        name: "utils"
+        tasks_from: nfs_install_client_tools.yml
+      when: inventory_hostname == client_pi_hostname
+
+    - name: "mount self nfs dir"
+      become: yes
+      mount:
+        path: "{{ test_dir }}/self_nfs"
+        src:  "{{ hostvars[ssd_pi_hostname]['ansible_default_ipv4']['address'] }}:{{ test_dir }}/ssd"
+        fstype: nfs
+        opts: defaults,noatime,_netdev
+        state: mounted
+      when: inventory_hostname == ssd_pi_hostname
+
+    - name: "mount pi network nfs dir"
+      become: yes
+      mount:
+        path: "{{ test_dir }}/pi_nfs"
+        src:  "{{ hostvars[ssd_pi_hostname]['ansible_default_ipv4']['address'] }}:{{ test_dir }}/ssd"
+        fstype: nfs
+        opts: defaults,noatime,_netdev
+        state: mounted
+      when: inventory_hostname == client_pi_hostname
+
+    - block:
+      - name: "create results file"
+        register: tempfile_result
+        tempfile:
+          suffix: "scores"
+          state: "file"
+        when: inventory_hostname == ssd_pi_hostname
+        delegate_to: 127.0.0.1
+
+      - include_role:
+          name: "utils"
+          tasks_from: test_dir_throughput.yml
+        vars:
+          path: "{{ item }}"
+          num_passes: 5
+          local_scores_file: "{{ tempfile_result.path }}"
+        when: inventory_hostname == ssd_pi_hostname
+        with_items:
+          - "{{ test_dir }}"
+          - "{{ test_dir }}/ssd"
+          - "{{ test_dir }}/tmp"
+          - "{{ test_dir }}/self_iscsi"
+          - "{{ test_dir }}/self_nfs"
+          - "{{ test_dir }}/nas_iscsi"
+          - "{{ test_dir }}/nas_nfs"
+
+      - include_role:
+          name: "utils"
+          tasks_from: test_dir_throughput.yml
+        vars:
+          path: "{{ item }}"
+          num_passes: 5
+          local_scores_file: "{{ hostvars[ssd_pi_hostname]['tempfile_result']['path'] }}"
+        when: inventory_hostname == client_pi_hostname
+        with_items:
+          - "{{ test_dir }}/pi_iscsi"
+          - "{{ test_dir }}/pi_nfs"
+
+      - name: "show results"
+        debug:
+          msg: "{{lookup('file', tempfile_result.path) }}"
+        when: inventory_hostname == ssd_pi_hostname
+        delegate_to: 127.0.0.1
+
+      - name: "show result filename"
+        debug:
+          msg: "results stored in {{ tempfile_result.path }}"
+        when: inventory_hostname == ssd_pi_hostname
+        delegate_to: 127.0.0.1
+
+      tags: run_tests
