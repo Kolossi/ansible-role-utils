@@ -87,10 +87,11 @@
         apply:
           delegate_to: "{{ ssd_pi_hostname }}"
       vars:
-        iscsi_target_blocks_file:    "{{ test_dir }}/ssd/blocks/blocks-{{ inventory_hostname }}.img"
-        iscsi_target_size_mb:        500
-        iscsi_target_iqn:            "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}.Target-ThroughputTest"
-        iscsi_allowed_initiatorname: "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}"
+        iscsi_target_blocks_file:       "{{ test_dir }}/ssd/blocks/blocks-{{ inventory_hostname }}.img"
+        iscsi_target_size_mb:           500
+        iscsi_target_iqn:               "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}.Target-ThroughputTest"
+        iscsi_allowed_initiatoraddress: "iqn.2019-11.uk.co.kolossi:{{ ansible_default_ipv4['address'] }}"
+        iscsi_server_initiatorname:     "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}"
 
     - include_role:
         name: "utils"
@@ -110,7 +111,7 @@
         iscsi_target_iqn:      "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}.Target-ThroughputTest"
         iscsi_target_ip:       "{{ hostvars[ssd_pi_hostname]['ansible_default_ipv4']['address'] }}"
         iscsi_target_startup:  "automatic"
-        iscsi_initiatorname:      "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}"
+        iscsi_initiatorname:   "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}"
 #      when: inventory_hostname == client_pi_hostname
 
     - name: "mount self iscsi device"

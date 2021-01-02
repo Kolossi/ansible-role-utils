@@ -3,6 +3,9 @@
 {% for initiator in  _params['iscsi_allowed_initiatorname'] %}
   initiator-name {{ initiator }}
 {% endfor %}
+{% for initiator in  _params['iscsi_allowed_initiatoraddress'] %}
+  initiator-address {{ initiator }}
+{% endfor %}
 {% if (_params['iscsi_target_username'] | default('')) != '' %}
   incominguser {{ _params['iscsi_target_username'] }} {{ _params['iscsi_target_password'] }}
 {% endif %}
