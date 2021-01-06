@@ -5,6 +5,7 @@
     state: restarted
     name: systemd-timesyncd
     daemon_reload: yes
+  when: skip_handlers | default(False) == False
 
 - name: "Restart iscsi server"
   become: yes
@@ -12,7 +13,9 @@
     state: restarted
     name: tgt
     daemon_reload: yes
+  when: skip_handlers | default(False) == False
 
 - name: "Reboot"
-  become: yes
-  reboot:
+  include_tasks:
+    file: reboot.yml
+  when: skip_handlers | default(False) == False

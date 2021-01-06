@@ -20,6 +20,10 @@
 
     - include_role:
         name: "utils"
+        tasks_from: apt_upgrade.yml
+
+    - include_role:
+        name: "utils"
         tasks_from: ext4_make_filesystem.yml
       vars:
         filesystem_device:     "{{ ssd_device }}"
@@ -90,8 +94,8 @@
         iscsi_target_blocks_file:       "{{ test_dir }}/ssd/blocks/blocks-{{ inventory_hostname }}.img"
         iscsi_target_size_mb:           500
         iscsi_target_iqn:               "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}.Target-ThroughputTest"
-        iscsi_allowed_initiatoraddress: "iqn.2019-11.uk.co.kolossi:{{ ansible_default_ipv4['address'] }}"
-        iscsi_server_initiatorname:     "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}"
+        iscsi_allowed_initiatoraddress: "{{ ansible_default_ipv4['address'] }}"
+        iscsi_server_initiatorname:     "iqn.2019-11.uk.co.kolossi:{{ ssd_pi_hostname }}"
 
     - include_role:
         name: "utils"
@@ -101,7 +105,7 @@
         nfs_serve_path:    "{{ test_dir }}/ssd"
       when: inventory_hostname == ssd_pi_hostname
 
-    - name: "flush handlers"
+    - name: "flush handlers so iscsi/nfs serves can be seen"
       meta: flush_handlers
 
     - include_role:
@@ -112,7 +116,6 @@
         iscsi_target_ip:       "{{ hostvars[ssd_pi_hostname]['ansible_default_ipv4']['address'] }}"
         iscsi_target_startup:  "automatic"
         iscsi_initiatorname:   "iqn.2019-11.uk.co.kolossi:{{ inventory_hostname }}"
-#      when: inventory_hostname == client_pi_hostname
 
     - name: "mount self iscsi device"
       become: yes
@@ -158,6 +161,9 @@
         opts: defaults,noatime,_netdev
         state: mounted
       when: inventory_hostname == client_pi_hostname
+
+    - name: "flush handlers before running tests"
+      meta: flush_handlers
 
     - block:
       - name: "create results file"

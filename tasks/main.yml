@@ -12,8 +12,10 @@
 #   vars:
 #     iscsi_initiatorname: "{{ YOUR_VALUE }}"
 #   when: YOUR_CONDITION
-
-
+#
+# ansible g-k8s-pi-master -m include_role -a "name=utils tasks_from=iscsi_set_initiatorname " \
+#    -e "iscsi_initiatorname=iqn.2019-11.uk.co.kolossi:g-k8s-pi-master skip_handlers=True"
+#
 
 #    - include_role:
 #        name: "utils"
