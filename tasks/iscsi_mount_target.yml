@@ -1,7 +1,7 @@
 ---
 
 - include_tasks:
-    file: task_header.yml
+    file: _task_header.yml
   vars:
     kol_utils_name: "iscsi mount target"
     kol_utils_params:
@@ -30,16 +30,19 @@
   set_fact:
     iscsi_device: "{{ _lsscsi_result.stdout }}"
 
-- block:
-  - include_tasks:
-      file: iscsi_install_client_tools.yml
-    vars:
-      iscsi_initiatorname: "{{ (_params['iscsi_initiatorname'] != None) | ternary(_params['iscsi_initiatorname'], omit) }}"
+- include_tasks:
+    file: iscsi_install_client_tools.yml
+  vars:
+    iscsi_initiatorname: "{{ (_params['iscsi_initiatorname'] != None) | ternary(_params['iscsi_initiatorname'], omit) }}"
+  when: iscsi_device | default('') == ''
 
+- name: "flush handlers before discovery"
+  meta: flush_handlers
+
+- block:
   - name: "run iscsi discovery"
     register: iscsi_discovery_result
     become: yes
-    notify: "Reboot"
     open_iscsi:
       discover:  yes
       portal:    "{{ _params['iscsi_target_ip'] }}"
@@ -157,7 +160,7 @@
 ########################################
 
 - include_tasks:
-    file: task_footer.yml
+    file: _task_footer.yml
   vars:
     kol_utils_exit_vars:
       [

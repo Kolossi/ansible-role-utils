@@ -18,6 +18,9 @@
       vars:
         ntp_servers: "{{ pi_ntp_servers }}"
 
+    - name: "flush handlers so time is synced"
+      meta: flush_handlers
+
     - include_role:
         name: "utils"
         tasks_from: apt_upgrade.yml

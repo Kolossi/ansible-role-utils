@@ -3,29 +3,30 @@
 - include_tasks:
     file: _task_header.yml
   vars:
-    kol_utils_name: "REBOOT"
+    kol_utils_name: "SHUTDOWN"
     kol_utils_params: {}
 
 ########################################
 
-- name: "trigger reboot"
+- name: "trigger shutdown"
   debugger: never
   become: yes
-  shell: "sleep 5 && shutdown -c && reboot"
+  shell: "nohup bash -c 'sleep 2 && shutdown -c && shutdown -P now' &"
   async: 1
   poll: 0
   tags: reboot
 
 - meta: reset_connection
-  ignore_errors: True
 
-- name: "await reboot"
+- name: "wait for ssh connection to dissappear"
   debugger: never
-  wait_for_connection:
-    connect_timeout: 20
-    sleep: 5
-    delay: 7
-    timeout: 300
+  wait_for:
+    host: '{{ (ansible_ssh_host|default(ansible_host))|default(inventory_hostname) }}'
+    port: 22
+    state: stopped
+    delay: 10
+    sleep: 10
+  delegate_to: 127.0.0.1
 
 ###################################
 #

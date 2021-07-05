@@ -1,7 +1,7 @@
 ---
 
 - include_tasks:
-    file: task_header.yml
+    file: _task_header.yml
   vars:
     kol_utils_name: "ext4 make filesystem"
     kol_utils_params:
@@ -32,7 +32,7 @@
 ########################################
 
 - include_tasks:
-    file: task_footer.yml
+    file: _task_footer.yml
   vars:
     kol_utils_exit_vars:
       [

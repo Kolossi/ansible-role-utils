@@ -1,6 +1,12 @@
 ---
 
 # there are no tasks here, the role is for tasks to be included as needed
+#
+#
+###########
+# EXAMPLES:
+###########
+#
 # use in a caller playbook/role/task with e.g.:
 # - include_role:
 #     name: "utils"
@@ -13,20 +19,113 @@
 #     iscsi_initiatorname: "{{ YOUR_VALUE }}"
 #   when: YOUR_CONDITION
 #
-# ansible g-k8s-pi-master -m include_role -a "name=utils tasks_from=iscsi_set_initiatorname " \
+# or direct from the commandline with e.g.
+#
+# ansible g-k8s-pi-master -m include_role -a "name=utils tasks_from=iscsi_set_initiatorname" \
 #    -e "iscsi_initiatorname=iqn.2019-11.uk.co.kolossi:g-k8s-pi-master skip_handlers=True"
 #
-
+# ansible g-k8s-pi-master -m include_role -a "name=utils tasks_from=reboot"
+#
+#
+########
+# DEBUG:
+########
+#
+# To display debug exit/entry vars to each called task, use:
+#
+# - vars:
+#    kol_utils_show_entry_vars:   yes
+#    kol_utils_show_exit_vars:    yes
+#
+#
+##################
+# AVAILABLE TASKS:
+##################
+#
 #    - include_role:
 #        name: "utils"
-#        tasks_from: ntp_set_servers.yml
+#        tasks_from: add_systemd_bind_mount.yml
 #      vars:
-#        ntp_servers: "{{ YOUR_VALUE }}"
+#        bindmount_src:  "{{ YOUR_VALUE }}"
+#        bindmount_dest: "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: apt_upgrade.yml
+#      vars:
+#        hold_ubuntu_pi_incompatibles: "{{ YOUR_VALUE }}"
+#        remove_ubuntu_auto_upgrades:  "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: ext4_make_filesystem.yml
+#      vars:
+#        filesystem_device:     "{{ YOUR_VALUE }}"
+#        filesystem_force_make: "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: filesystem_find_uuid.yml
+#      vars:
+#        target_device:  "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: iscsi_install_client_tools.yml
+#      vars:
+#        iscsi_initiatorname: "{{ YOUR_VALUE }}"
+#        disable_iser:        "{{ YOUR_VALUE }}"
 #      when: YOUR_CONDITION
 #
 #    - include_role:
 #        name: "utils"
 #        tasks_from: iscsi_install_server_tools.yml
+#      vars:
+#        iscsi_initiatorname: "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: iscsi_mount_target.yml
+#      vars:
+#        iscsi_target_iqn:      "{{ YOUR_VALUE }}"
+#        iscsi_target_ip:       "{{ YOUR_VALUE }}"
+#        iscsi_target_username: "{{ YOUR_VALUE }}"
+#        iscsi_target_password: "{{ YOUR_VALUE }}"
+#        iscsi_target_port:     "{{ YOUR_VALUE }}"
+#        iscsi_target_startup:  "{{ YOUR_VALUE }}"
+#        iscsi_initiatorname:   "{{ YOUR_VALUE }}"
+#        create_ext4_fs:        "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: iscsi_serve_target.yml
+#      vars:
+#        iscsi_target_blocks_file:       "{{ YOUR_VALUE }}"
+#        iscsi_target_size_mb:           "{{ YOUR_VALUE }}"
+#        iscsi_target_iqn:               "{{ YOUR_VALUE }}"
+#        iscsi_target_username:          "{{ YOUR_VALUE }}"
+#        iscsi_target_password:          "{{ YOUR_VALUE }}"
+#        iscsi_server_initiatorname:     "{{ YOUR_VALUE }}"
+#        iscsi_allowed_initiatorname:    "{{ YOUR_VALUE }}"
+#        iscsi_allowed_initiatoraddress: "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: iscsi_set_initiatorname.yml
+#      vars:
+#        iscsi_initiatorname: "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: nfs_install_client_tools.yml
 #      when: YOUR_CONDITION
 #
 #    - include_role:
@@ -36,12 +135,46 @@
 #
 #    - include_role:
 #        name: "utils"
-#        tasks_from: iscsi_serve_target.yml
+#        tasks_from: nfs_serve_dir.yml
 #      vars:
-#        iscsi_target_blocks_file: "{{ YOUR_VALUE }}"
-#        iscsi_target_size_mb:     "{{ YOUR_VALUE }}"
-#        iscsi_target_iqn:         "{{ YOUR_VALUE }}"
-#        iscsi_target_username:    "{{ YOUR_VALUE }}"
-#        iscsi_target_password:    "{{ YOUR_VALUE }}"
-#        iscsi_initiatorname:      "{{ YOUR_VALUE }}"
+#        nfs_serve_network: "{{ YOUR_VALUE }}"
+#        nfs_serve_path:    "{{ YOUR_VALUE }}"
+#        nfs_serve_mode:    "{{ YOUR_VALUE }}"
 #      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: nfs_server_restart.yml
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: ntp_set_servers.yml
+#      vars:
+#        ntp_servers: "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: pi_trafficlight_leds.yml
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: reboot.yml
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: shutdown.yml
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
+#        tasks_from: test_dir_throughput.yml
+#      vars:
+#        path:              "{{ YOUR_VALUE }}"
+#        num_passes:        "{{ YOUR_VALUE }}"
+#        local_scores_file: "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#

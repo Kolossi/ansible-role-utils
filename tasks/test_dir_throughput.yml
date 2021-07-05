@@ -1,7 +1,7 @@
 ---
 
 - include_tasks:
-    file: task_header.yml
+    file: _task_header.yml
   vars:
     kol_utils_name: "test dir throughput"
     kol_utils_params:
@@ -91,16 +91,12 @@
     path: "{{ _params['local_scores_file'] }}"
     regexp: "ALWAYS ADD"
     line: "{{ script_result.stdout }}"
-#    line: "{{ kol_score_line }}"
-#  loop: "{{ script_result.stdout_lines | list }}"
-#  loop_control:
-#    loop_var: kol_score_line
   delegate_to: 127.0.0.1
 
 ########################################
 
 - include_tasks:
-    file: task_footer.yml
+    file: _task_footer.yml
   vars:
     kol_utils_exit_vars:
       [

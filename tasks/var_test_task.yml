@@ -1,0 +1,23 @@
+---
+
+- include_tasks:
+    file: _task_header.yml
+  vars:
+    kol_utils_name: "var_test_task"
+    kol_utils_params:
+      some_other_1: "{{ some_other_1 | default(111) }}"
+      some_other_2: "{{ some_other_2 | default(222) }}"
+
+########################################
+
+
+########################################
+
+- include_tasks:
+    file: _task_footer.yml
+  vars:
+    kol_utils_exit_vars: 
+      [
+        "some_other_1:  {{ _params['some_other_1'] }}",
+        "some_other_2:  {{ _params['some_other_2'] }}",
+      ]

@@ -1,7 +1,7 @@
 ---
 
 - include_tasks:
-    file: task_header.yml
+    file: _task_header.yml
   vars:
     kol_utils_name: "apt upgrade"
     kol_utils_params:
@@ -24,10 +24,10 @@
         command: apt-mark hold linux-firmware
         when: "'linux-firmware' not in held_packages.stdout"
 
-      - name: "hold flash-kernel"
+      - name: "unhold flash-kernel"
         become: yes
-        command: apt-mark hold flash-kernel
-        when: "'flash-kernel' not in held_packages.stdout"
+        command: apt-mark unhold flash-kernel
+        when: "'flash-kernel' in held_packages.stdout"
     when: _params['hold_ubuntu_pi_incompatibles']
 
   - name: "uninstall ubuntu auto upgrades"
@@ -36,7 +36,7 @@
     notify: Reboot
     retries: 3
     delay: 5
-    until: apt_result is not failed
+    until: uninstall_result is not failed
     apt:
       force_apt_get: yes # there's no need to use aptitude
       name: ["flash-kernel", "unattended-upgrades", "ubuntu-release-upgrader-core"]
@@ -76,7 +76,7 @@
 ########################################
 
 - include_tasks:
-    file: task_footer.yml
+    file: _task_footer.yml
   vars:
     kol_utils_exit_vars:
       [
