@@ -1,0 +1,65 @@
+---
+
+- include_tasks:
+    file: _task_header.yml
+  vars:
+    kol_utils_name: "apt add repo"
+    kol_utils_params:
+      source_name:  "{{ source_name | mandatory }}"
+      signed_key_url:  "{{ signed_key_url | mandatory }}"
+      repo_url: "{{ repo_url | mandatory }}"
+      install_https_transport: "{{ install_https_transport | default(true) }}"
+
+########################################
+
+- block:
+    - name: "Update apt"
+      become: yes
+      apt:
+        force_apt_get: yes # there's no need to use aptitude
+        update_cache: yes
+        cache_valid_time: 3600 # Only run "update_cache=yes" if the last one is more than 3600 seconds ago
+
+    - name: "setup apt over https"
+      become: yes
+      apt:
+        force_apt_get: yes # there's no need to use aptitude
+        name: "apt-transport-https"
+        state: present
+        install_recommends: no
+  when: install_https_transport | default(true)
+
+# see geerlingguy comment in https://stackoverflow.com/a/72548342/2738122 references https://github.com/ansible/ansible/issues/78063#issuecomment-1210837515
+- name: "get repo key"
+  become: yes
+  register: get_key_result
+  ansible.builtin.get_url:
+    url: "{{ signed_key_url }}"
+    dest: "/etc/apt/keyrings/{{ source_name }}.asc"
+
+- name: "add apt repo"
+  become: yes
+  register: add_repo_result
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/{{ source_name }}.asc] https://downloads.plex.tv/repo/deb public main"
+    filename: "{{ source_name }}"
+    state: present
+
+- name: "Update apt"
+  become: yes
+  apt:
+    force_apt_get: yes # there's no need to use aptitude
+    update_cache: yes
+    cache_valid_time: 3600 # Only run "update_cache=yes" if the last one is more than 3600 seconds ago
+
+########################################
+
+- include_tasks:
+    file: _task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        "get_key_result:  {{ get_key_result }}",
+        "add_repo_result:    {{ add_repo_result }}",
+        "autoremove_result: {{ autoremove_result }}"
+      ]

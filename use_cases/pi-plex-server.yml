@@ -1,0 +1,78 @@
+- vars:
+    pi_hostname:          "CHANGE_ME: server pi (with ssd) hostname known to ansible :CHANGE_ME"
+    ssd_device:           "CHANGE_ME: pi ssd device (e.g. /dev/sda) :CHANGE_ME"
+    ssd_mount_dir:        "CHANGE_ME: pi ssd mount dir (e.g. /media/ssd) :CHANGE_ME"
+    data_nfs_target:      "CHANGE_ME: nas nfs target ({ip address}:{path}) :CHANGE_ME"
+    data_mount_dir:       "CHANGE_ME: mount dir for nfs data share (e.g. /media/plex) :CHANGE_ME"
+    pi_ntp_servers:       "CHANGE_ME: space-separated ntp servers :CHANGE_ME"
+
+  hosts: "{{ pi_hostname }}"
+
+  tasks:
+    - include_role:
+        name: "utils"
+        tasks_from: ntp_set_servers.yml
+      vars:
+        ntp_servers: "{{ pi_ntp_servers }}"
+
+    - name: "flush handlers so time is synced"
+      meta: flush_handlers
+
+    - include_role:
+        name: "utils"
+        tasks_from: pi_trafficlight_leds.yml
+
+    - include_role:
+        name: "utils"
+        tasks_from: apt_upgrade.yml
+
+    - include_role:
+        name: "utils"
+        tasks_from: ext4_make_filesystem.yml
+      vars:
+        filesystem_device:     "{{ ssd_device }}"
+        filesystem_force_make: No
+
+    - name: "mount ssd device"
+      become: yes
+      mount:
+        path: "{{ ssd_mount_dir }}"
+        src:  "{{ ssd_device }}"
+        fstype: ext4
+        opts: defaults,noatime
+        state: mounted
+
+    - include_role:
+        name: "utils"
+        tasks_from: nfs_install_client_tools.yml
+
+    - name: "mount nas nfs dir"
+      become: yes
+      mount:
+        path: "{{ data_mount_dir }}"
+        src:  "{{ data_nfs_target }}"
+        fstype: nfs
+        opts: defaults,noatime,_netdev
+        state: mounted
+
+    - name: "install firmware"
+      become: yes
+      get_url:
+        url: "https://www.hauppauge.com/linux/dvb-demod-si2168-b40-01.fw"
+        dest: "/lib/firmware/dvb-demod-si2168-b40-01.fw"
+
+    - include_role:
+        name: "utils"
+        tasks_from: add_apt_repo.yml
+      vars:
+        source_name:  "plexmediaserver"
+        signed_key_url:  "https://downloads.plex.tv/plex-keys/PlexSign.key"
+        repo_url: "https://downloads.plex.tv/repo/deb"
+
+    - name: "install plex media server"
+      become: yes
+      apt:
+        force_apt_get: yes # there's no need to use aptitude
+        update_cache: yes
+        cache_valid_time: 3600 # Only run "update_cache=yes" if the last one is more than 3600 seconds ago
+        name: "plexmediaserver"
