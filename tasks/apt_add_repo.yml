@@ -30,6 +30,12 @@
   when: install_https_transport | default(true)
 
 # see geerlingguy comment in https://stackoverflow.com/a/72548342/2738122 references https://github.com/ansible/ansible/issues/78063#issuecomment-1210837515
+- name: "make keyring dir"
+  become: yes
+  file:
+    path: "/etc/apt/keyrings"
+    state: directory
+
 - name: "get repo key"
   become: yes
   register: get_key_result

@@ -1,0 +1,338 @@
+---
+
+- include_tasks:
+    file: _task_header.yml
+  vars:
+    kol_utils_name: "iscsi_root"
+    kol_utils_params:
+      iscsi_target_ip:       "{{ iscsi_target_ip | mandatory }}"
+      iscsi_target_iqn:      "{{ iscsi_target_iqn | mandatory | replace('{{ inventory_hostname }}',inventory_hostname) }}"
+      iscsi_target_password: "{{ iscsi_target_password | default('') }}"
+      iscsi_target_port:     "{{ iscsi_target_port | default(3260) | int }}" 
+      iscsi_target_username: "{{ iscsi_target_username | default('') }}"
+      iscsi_initiatorname:   "{{ iscsi_initiatorname | mandatory }}"
+
+########################################
+
+
+######### see https://www.domoticz.com/forum/viewtopic.php?t=28797
+#########     https://www.hiroom2.com/2018/05/05/ubuntu-1804-open-iscsi-en/#sec-3
+
+- name: "check for existing iscsi root"
+  set_fact:
+    iscsi_root_found: yes
+    iscsi_device: "{{ item.device }}"
+#  no_log: true
+  with_items: "{{ ansible_mounts }}"
+  when: "item.mount=='/' and 'ext4' in item.fstype and '/dev/sd' in item.device"
+  tags: iscsiroot,netroot
+
+- include_tasks:
+    file: iscsi_install_client_tools.yml
+  vars:
+    iscsi_initiatorname: "{{ _params['iscsi_initiatorname'] }}"
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- include_tasks:
+    file: iscsi_mount_target.yml
+    apply:
+      tags: iscsiroot,netroot
+  vars:
+    iscsi_target_ip: "{{ _params['iscsi_target_ip'] }}"
+    iscsi_target_port: "{{ _params['iscsi_target_port'] }}"
+    iscsi_target_iqn: "{{ _params['iscsi_target_iqn'] }}"
+    iscsi_target_username: "{{ _params['iscsi_target_username'] }}"
+    iscsi_target_password: "{{ _params['iscsi_target_password'] }}"
+    iscsi_target_startup: "manual"
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+# https://docs.ansible.com/ansible/2.4/playbooks_reuse_includes.html#including-and-importing-task-files
+- name: "make root file system (include)"
+  include_tasks:
+    file: ext4_make_filesystem.yml
+    apply:
+      tags: iscsiroot,netroot
+  vars:
+    filesystem_device: "{{ iscsi_device }}"
+    filesystem_force_make: "yes"
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: "find new iscsi root file system uuid (include)"
+  include_tasks:
+    file: find_device_fs_uuid.yml
+    apply:
+      tags: iscsiroot,netroot
+  vars:
+    target_device: "{{ iscsi_device }}"
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: "set iscsi lun uuid"
+  set_fact:
+    iscsi_uuid: "{{ device_uuid }}"
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: "Get initiator name"
+  become: yes
+  register: iscsi_initiator
+  shell: "cat /etc/iscsi/initiatorname.iscsi | grep -v '^##' | tail -1 | cut -d'=' -f2"
+  changed_when: false
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+## thanks: https://docs.ansible.com/ansible/latest/user_guide/playbooks_blocks.html
+- block:
+    - name: "create temp iscsi mountpoint"
+      become: yes
+      tempfile:
+        state: directory
+        suffix: "iscsitemp"
+        path: "{{ ansible_env.HOME }}"
+      register: iscsitemp
+
+    - name: "mount iscsi root source"
+      become: yes
+      mount:
+        path: "{{ iscsitemp.path }}"
+        src: "{{ iscsi_device }}"
+        fstype: "ext4"
+        opts: defaults
+        state: mounted
+      register: iscsimount
+
+# rc=24 occurs when a file or directory "vanished" before rsync got a chance to
+# copy it - happens with e.g. log/lock files
+    - name: "rsync copy root partition"
+      become: yes
+      register: rsync
+      command: "rsync -xaq --delete-before --exclude {{ iscsitemp.path }} / {{ iscsitemp.path }}"
+      failed_when: rsync.rc != 0 and rsync.rc != 24
+
+    - name: "comment out sd card root mount"
+      become: yes
+      lineinfile:
+        path: "{{ iscsitemp.path }}/etc/fstab"
+        regexp: "{{ '^((LABEL=writable\\s+/\\s+.*)$)' if (is_ubuntu) else '^((PARTUUID=[0-9a-zA-Z-]*\\s+/\\s+.*)$)' }}"
+        line: '#\1'
+        backrefs: yes
+
+    - name: "add iscsi root mount"
+      become: yes
+      lineinfile:
+        path: "{{ iscsitemp.path }}/etc/fstab"
+        regexp: "^UUID={{ iscsi_uuid }}\\s+/\\s+ext4\\s+{{ '_netdev' if (is_ubuntu) else 'defaults' }}\\s+0\\s+1\\s*$"
+        line: "UUID={{ iscsi_uuid }} / ext4 {{ '_netdev' if (is_ubuntu) else 'defaults' }} 0 1"
+
+  always:
+    - name: "unmount iscsi root source in copy"
+      become: yes
+      lineinfile:
+        path: "{{ iscsitemp.path }}/etc/fstab"
+        regexp: "^{{ iscsi_device }}\\s*{{ iscsitemp.path }}\\s*ext4.*$"
+        state: absent
+      when: iscsimount is defined and not iscsimount.failed
+
+    - name: "unmount iscsi root source local"
+      become: yes
+      mount:
+        path: "{{ iscsitemp.path }}"
+        state: absent # <- will also remove mountpoint
+      when: iscsimount is defined and not iscsimount.failed
+
+    - name: "unmount iscsi lun"
+      become: yes
+      open_iscsi:
+        login: no
+        port: "{{ _params['iscsi_target_port'] }}" # not strictly needed for unmount, but avoids a warning
+        target: "{{ _params['iscsi_target_iqn'] }}"
+      when: iscsimount is defined and not iscsimount.failed
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: 'copy cmdline.txt to cmdline.txt.before_iscsi'
+  become: yes
+  copy:
+    src: "{{ cmdline_txt_path }}"
+    dest: "{{ cmdline_txt_path }}.before_iscsi"
+    remote_src: yes
+    force: no
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: 'copy cmdline.txt to cmdline.txt.iscsi'
+  become: yes
+  copy:
+    src: "{{ cmdline_txt_path }}"
+    dest: "{{ cmdline_txt_path }}.iscsi"
+    remote_src: yes
+    force: yes
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: 'copy config.txt to config.txt.before_iscsi'
+  become: yes
+  copy:
+    src: "{{ config_txt_path }}"
+    dest: "{{ config_txt_path }}.before_iscsi"
+    remote_src: yes
+    force: no
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: 'copy config.txt to config.txt.iscsi'
+  become: yes
+  copy:
+    src: "{{ config_txt_path }}"
+    dest: "{{ config_txt_path }}.iscsi"
+    remote_src: yes
+    force: yes
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- block:
+    - name: 'retrieve kernel version'
+      register: uname_result
+      command: "uname -r"
+
+    - name: 'set ansible_kernel fact'
+      set_fact:
+        ansible_kernel: "{{ uname_result.stdout }}"
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+  
+- name: 'make initramfs'
+  become: yes
+  register: initramfs
+  shell:
+    cmd: 'update-initramfs -k {{ ansible_kernel }} -c'
+#    creates: '/boot/initrd.img-{{ ansible_kernel }}'
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+### maybe should be copy??? %%%
+- name: 'move initramfs to /boot/firmware'
+  become: yes
+  command: "mv -f /boot/initrd.img-{{ ansible_kernel }} /boot/firmware/initrd.img-{{ ansible_kernel }}"
+  args:
+    removes: "/boot/initrd.img-{{ ansible_kernel }}"
+    creates: "/boot/firmware/initrd.img-{{ ansible_kernel }}"
+  when: is_ubuntu and iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: "remove old ubuntu initrd"
+  become: yes
+  file:
+    path: /boot/firmware/initrd.img
+    state: absent
+  when: is_ubuntu and ansible_lsb['major_release']!='18' and iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: "move initrd to Ubuntu >20 initrd.img"  
+  become: yes
+  command: "mv -f /boot/firmware/initrd.img-{{ ansible_kernel }} /boot/firmware/initrd.img"
+  args:
+    removes: "/boot/firmware/initrd.img-{{ ansible_kernel }}"
+    creates: "/boot/firmware/initrd.img"
+  when: is_ubuntu and ansible_lsb['major_release']!='18' and iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: 'add initramfs to config.txt.iscsi for ubuntu 18'
+  become: yes
+  lineinfile:
+    path: "{{ config_txt_path }}.iscsi"
+    line: 'initramfs initrd.img-{{ ansible_kernel }} followkernel'
+  when: iscsi_root_found is not defined and is_ubuntu and ansible_lsb['major_release']=='18'
+  tags: iscsiroot,netroot
+
+- name: "remove uuid sd root partition from cmdline.txt.iscsi"
+  become: yes
+  register: sd_cmd
+  lineinfile:
+    path: "{{ cmdline_txt_path }}.iscsi"
+    regexp: '^(.*)(root=PARTUUID=[0-9a-zA-Z-]* *)(.*$)'
+    line: '\1\3'
+    backrefs: yes   
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: "remove label sd root partition from cmdline.txt.iscsi"
+  become: yes
+  register: sd_cmd
+  lineinfile:
+    path: "{{ cmdline_txt_path }}.iscsi"
+    regexp: '^(.*)(root=LABEL=writable *)(.*$)'
+    line: '\1\3'
+    backrefs: yes   
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: "create root cmdline.txt.iscsi entry"
+  set_fact:
+    iscsi_cmdline: "ISCSI_INITIATOR={{ iscsi_initiator.stdout }} ISCSI_TARGET_NAME={{ _params['iscsi_target_iqn'] | replace('{{ inventory_hostname }}',inventory_hostname) }} ISCSI_TARGET_IP={{ _params['iscsi_target_ip'] }} ISCSI_TARGET_PORT={{ _params['iscsi_target_port'] }} ISCSI_TARGET_GROUP=1 rw root=UUID={{ iscsi_uuid }}"
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: 'add iscsi root to cmdline.txt.iscsi'
+  become: yes
+  register: iscsi_cmd
+  lineinfile:
+    path: "{{ cmdline_txt_path }}.iscsi"
+    regexp: '^(((?! {{ iscsi_cmdline }}).)*$)'
+    line: '\1 {{ iscsi_cmdline }}'
+    backrefs: yes
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: 'add fstype to cmdline.txt.iscsi'
+  become: yes
+  register: type_cmd
+  lineinfile:
+    path: "{{ cmdline_txt_path }}.iscsi"
+    regexp: '^(((?! rootfstype=ext4).)*$)'
+    line: '\1 rootfstype=ext4'
+    backrefs: yes
+  when: iscsi_root_found is not defined
+  tags: iscsiroot,netroot
+
+- name: 'copy cmdline.txt.iscsi to cmdline.txt'
+  become: yes
+  register: cmdlinecopy
+  copy:
+    src: "{{ cmdline_txt_path }}.iscsi"
+    dest: "{{ cmdline_txt_path }}"
+    remote_src: yes
+    force: yes
+  tags: iscsiroot,netroot,iscsiroot_install
+
+- name: 'copy config.txt.iscsi to config.txt'
+  become: yes
+  register: configcopy
+  copy:
+    src: "{{ config_txt_path }}.iscsi"
+    dest: "{{ config_txt_path }}"
+    remote_src: yes
+    force: yes
+  tags: iscsiroot,netroot,iscsiroot_install
+
+- name: 'reboot after setting up iscsi root'
+  become: yes
+  reboot:
+  tags: iscsiroot,netroot,reboot,iscsiroot_install
+  when: ((iscsi_root_found is not defined and not rsync.failed) or cmdlinecopy.changed or configcopy.changed)
+
+########################################
+
+- include_tasks:
+    file: _task_footer.yml
+  vars:
+    kol_utils_exit_vars:
+      [
+        "ansible_kernel:    {{ ansible_kernel }}",
+        "iscsi_root_found:  {{ iscsi_root_found }}",
+        "iscsi_device:      {{ iscsi_device }}",
+        "iscsu_uuid:        {{ iscsu_uuid }}"
+      ]

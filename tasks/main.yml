@@ -104,6 +104,17 @@
 #
 #    - include_role:
 #        name: "utils"
+#        tasks_from: iscsi_root.yml
+#      vars:
+#        iscsi_target_ip:       "{{ YOUR_VALUE }}"
+#        iscsi_target_iqn:      "{{ YOUR_VALUE }}"
+#        iscsi_target_password: "{{ YOUR_VALUE }}"
+#        iscsi_target_port:     "{{ YOUR_VALUE }}"
+#        iscsi_target_username: "{{ YOUR_VALUE }}"
+#      when: YOUR_CONDITION
+#
+#    - include_role:
+#        name: "utils"
 #        tasks_from: iscsi_serve_target.yml
 #      vars:
 #        iscsi_target_blocks_file:       "{{ YOUR_VALUE }}"

@@ -30,18 +30,23 @@
         when: "'flash-kernel' in held_packages.stdout"
     when: _params['hold_ubuntu_pi_incompatibles']
 
-  - name: "uninstall ubuntu auto upgrades"
-    become: yes
-    register: uninstall_result
-    notify: Reboot
-    retries: 3
-    delay: 5
-    until: uninstall_result is not failed
-    apt:
-      force_apt_get: yes # there's no need to use aptitude
-      name: ["flash-kernel", "unattended-upgrades", "ubuntu-release-upgrader-core"]
-      state: absent
-    tags: pi_setup
+  - block:
+    - name: "kill unattended upgrade process"
+      become: yes
+      shell: "pgrep unattended-upgr && pkill -9 unattended-upgr || true"
+
+    - name: "uninstall ubuntu auto upgrades"
+      become: yes
+      register: uninstall_result
+      notify: Reboot
+      retries: 3
+      delay: 5
+      until: uninstall_result is not failed
+      apt:
+        force_apt_get: yes # there's no need to use aptitude
+        name: ["flash-kernel", "unattended-upgrades", "ubuntu-release-upgrader-core"]
+        state: absent
+      tags: pi_setup
   when: (True if (ansible_distribution=='Ubuntu') else False)
 
 - name: "Upgrade all packages to the latest version"
